@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LABEL PRINTING SYSTEM — GLOBE INTERNATIONAL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --navy: #00244d;
+            --blue: #00417a;
+            --accent: #0077cc;
+            --gold: #f0a500;
+            --surface: #f5f7fa;
+            --border: #dde3ec;
+            --text: #1a2540;
+            --muted: #6b7a99;
+            --danger: #d92b3a;
+            --success: #0f7a55;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--surface); color: var(--text); min-height: 100vh; }
+
+        /* ===== LOGIN ===== */
+        #loginOverlay {
+            position: fixed; inset: 0;
+            background: var(--navy);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+            background-image: radial-gradient(ellipse at 20% 50%, #003580 0%, transparent 60%),
+                              radial-gradient(ellipse at 80% 20%, #001a3a 0%, transparent 50%);
+            padding: 16px;
+        }
+        .login-card {
+            background: white; border-radius: 20px; padding: 40px 32px;
+            width: 100%; max-width: 400px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.4); text-align: center;
+        }
+        @media (max-width: 480px) { .login-card { padding: 32px 24px; border-radius: 16px; } }
+        .login-logo-area {
+            width: 140px; height: 85px; background: var(--navy); border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 24px;
+            font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800;
+            color: var(--gold); letter-spacing: 2px;
+        }
+        .login-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+        .login-sub { font-size: 12px; color: var(--muted); margin-bottom: 32px; }
+        .login-input {
+            width: 100%; padding: 14px 16px; border: 2px solid var(--border); border-radius: 10px;
+            font-size: 16px; font-family: 'DM Mono', monospace;
+            text-align: center; letter-spacing: 4px; transition: border-color 0.2s; margin-bottom: 14px;
+        }
+        .login-input:focus { outline: none; border-color: var(--blue); }
+        .login-btn {
+            width: 100%; padding: 15px; background: var(--navy); color: white;
+            border: none; border-radius: 10px; font-family: 'Syne', sans-serif;
+            font-size: 15px; font-weight: 700; letter-spacing: 2px; cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+        }
+        .login-btn:hover { background: var(--blue); }
+        .login-btn:active { transform: scale(0.98); }
+        .login-error { color: var(--danger); font-size: 13px; margin-top: 12px; display: none; }
+
+        /* ===== SYNC STATUS BADGE ===== */
+        #syncBadge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 12px; border-radius: 20px;
+            font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 600;
+            letter-spacing: 1px; transition: all 0.3s;
+        }
+        #syncBadge.syncing { background: rgba(240,165,0,0.2); color: var(--gold); border: 1px solid rgba(240,165,0,0.4); }
+        #syncBadge.synced  { background: rgba(15,122,85,0.2);  color: #2dd4a0;    border: 1px solid rgba(15,122,85,0.4); }
+        #syncBadge.error   { background: rgba(217,43,58,0.2);  color: #ff6b7a;    border: 1px solid rgba(217,43,58,0.4); }
+        .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+        #syncBadge.syncing .sync-dot { animation: blink 0.8s infinite; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+        /* ===== HEADER ===== */
+        #appHeader {
+            background: var(--navy); padding: 0;
+            position: sticky; top: 0; z-index: 100;
+            border-bottom: 3px solid var(--gold);
+        }
+        .header-row1 {
+            padding: 10px 16px; display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        @media (min-width: 768px) { .header-row1 { padding: 10px 32px; } }
+        .header-row2 {
+            padding: 7px 16px; display: flex; align-items: center; justify-content: space-between;
+            gap: 10px; background: rgba(0,0,0,0.18); flex-wrap: wrap;
+        }
+        @media (min-width: 768px) { .header-row2 { padding: 7px 32px; } }
+        .header-brand { display: flex; align-items: center; gap: 10px; }
+        .header-logo {
+            width: 36px; height: 36px; background: var(--gold); border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 800; color: var(--navy); flex-shrink: 0;
+        }
+        .header-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: white; letter-spacing: 0.5px; }
+        .header-sub { font-size: 10px; color: rgba(255,255,255,0.5); letter-spacing: 1px; margin-top: 1px; }
+        @media (min-width: 768px) {
+            .header-logo { width: 70px; height: 40px; font-size: 13px; border-radius: 8px; }
+            .header-title { font-size: 16px; letter-spacing: 1px; }
+            .header-sub { font-size: 11px; letter-spacing: 2px; }
+        }
+        @media (max-width: 380px) { .header-sub { display: none; } }
+        .dt-row { display: flex; align-items: center; gap: 6px; }
+        .dt-date { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.8); }
+        .dt-sep { color: rgba(255,255,255,0.3); font-size: 14px; margin: 0 2px; }
+        .dt-time { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; color: var(--gold); letter-spacing: 1px; }
+        .header-actions { display: flex; gap: 8px; align-items: center; }
+        .btn-logout {
+            padding: 7px 12px; background: transparent;
+            border: 1.5px solid rgba(255,255,255,0.25); border-radius: 8px;
+            color: rgba(255,255,255,0.7); font-size: 11px; font-weight: 600;
+            cursor: pointer; letter-spacing: 1px; transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent; touch-action: manipulation; white-space: nowrap;
+        }
+        .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+        /* ===== MAIN ===== */
+        #mainContent { display: none; }
+        .page-wrap { max-width: 1400px; margin: 0 auto; padding: 16px 12px; }
+        @media (min-width: 768px) { .page-wrap { padding: 28px 24px; } }
+
+        /* ===== FORM ===== */
+        .form-section {
+            background: white; border-radius: 12px; padding: 16px;
+            margin-bottom: 14px; border: 1px solid var(--border);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+        @media (min-width: 768px) { .form-section { border-radius: 16px; padding: 24px 28px; margin-bottom: 20px; } }
+        .section-label {
+            font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 700;
+            letter-spacing: 3px; color: var(--muted); text-transform: uppercase;
+            margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
+        }
+        .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+        .form-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px;
+        }
+        @media (min-width: 600px) { .form-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; } }
+        @media (min-width: 900px) { .form-grid { grid-template-columns: repeat(4, 1fr); } }
+        .form-field { display: flex; flex-direction: column; gap: 4px; }
+        .field-label { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
+        .field-input {
+            padding: 11px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+            font-size: 16px; font-family: 'DM Mono', monospace; color: var(--text);
+            transition: border-color 0.2s, box-shadow 0.2s; background: var(--surface);
+            -webkit-appearance: none; appearance: none; width: 100%;
+        }
+        @media (min-width: 768px) { .field-input { padding: 10px 13px; font-size: 14px; } }
+        .field-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,119,204,0.1); background: white; }
+        .field-input::placeholder { color: #b0bac8; font-family: 'DM Sans', sans-serif; font-size: 13px; }
+
+        /* ===== BUTTONS ===== */
+        .action-bar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+        @media (min-width: 480px) { .action-bar { grid-template-columns: repeat(3, 1fr); } }
+        @media (min-width: 768px) { .action-bar { display: flex; flex-wrap: wrap; gap: 10px; } }
+        .btn {
+            padding: 12px 14px; border: none; border-radius: 8px;
+            font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700;
+            letter-spacing: 1px; cursor: pointer;
+            transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
+            -webkit-tap-highlight-color: transparent; touch-action: manipulation; white-space: nowrap;
+        }
+        @media (min-width: 768px) { .btn { padding: 10px 20px; font-size: 12px; letter-spacing: 1.5px; } }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-save    { background: var(--blue); color: white; }
+        .btn-reset   { background: #e8edf5; color: var(--text); }
+        .btn-excel   { background: #1a7a4a; color: white; }
+        .btn-pdf     { background: #b52020; color: white; }
+        .btn-print   { background: var(--accent); color: white; }
+        .btn-closure { background: var(--navy); color: white; }
+        .btn-delete  { background: var(--danger); color: white; }
+
+        /* ===== SEARCH ===== */
+        .search-wrap { margin-bottom: 12px; position: relative; }
+        .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; }
+        .search-input {
+            width: 100%; padding: 13px 14px 13px 40px; border: 1.5px solid var(--border);
+            border-radius: 10px; font-size: 16px; font-family: 'DM Sans', sans-serif;
+            background: white; color: var(--text); transition: border-color 0.2s; -webkit-appearance: none;
+        }
+        @media (min-width: 768px) { .search-input { font-size: 14px; } }
+        .search-input:focus { outline: none; border-color: var(--accent); }
+        .search-input::placeholder { color: #b0bac8; }
+
+        /* ===== TABLE ===== */
+        .table-wrap {
+            background: white; border-radius: 12px; border: 1px solid var(--border);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 14px;
+        }
+        @media (min-width: 768px) { .table-wrap { border-radius: 16px; margin-bottom: 20px; } }
+        .table-header-bar {
+            padding: 12px 16px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        @media (min-width: 768px) { .table-header-bar { padding: 16px 22px; } }
+        .table-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--navy); }
+        .record-count { font-size: 11px; color: var(--muted); background: var(--surface); padding: 3px 10px; border-radius: 20px; }
+        .overflow-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        @media (min-width: 768px) { table { font-size: 13px; } }
+        thead tr { background: var(--navy); }
+        thead th {
+            padding: 11px 10px; font-family: 'Syne', sans-serif; font-size: 9px;
+            font-weight: 700; letter-spacing: 1.5px; color: rgba(255,255,255,0.85);
+            text-transform: uppercase; text-align: center; white-space: nowrap;
+        }
+        @media (min-width: 768px) { thead th { padding: 13px 14px; font-size: 10px; letter-spacing: 2px; } }
+        tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: #f0f5ff; }
+        tbody td { padding: 10px 8px; text-align: center; font-family: 'DM Mono', monospace; font-size: 11.5px; color: var(--text); }
+        @media (min-width: 768px) { tbody td { padding: 12px 14px; font-size: 12.5px; } }
+        .td-style { font-weight: 600; color: var(--navy); }
+        .td-line { font-weight: 600; }
+        .td-cut { color: var(--accent); font-weight: 600; }
+        .td-total { font-weight: 700; color: var(--navy); }
+        .td-season { color: var(--success); font-weight: 500; }
+        tfoot tr { background: #eef2fb; }
+        tfoot td {
+            padding: 11px 8px; text-align: center; font-family: 'Syne', sans-serif;
+            font-size: 11px; font-weight: 700; color: var(--navy); border-top: 2px solid var(--border);
+        }
+        @media (min-width: 768px) { tfoot td { padding: 13px 14px; font-size: 12px; } }
+        #grandTotal { font-size: 14px; color: var(--blue); }
+        .row-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--blue); }
+        .btn-edit-row {
+            padding: 6px 10px; background: #fff8e6; border: 1.5px solid var(--gold);
+            border-radius: 6px; font-family: 'Syne', sans-serif; font-size: 9px; font-weight: 700;
+            color: #7a5200; cursor: pointer; transition: all 0.15s; letter-spacing: 1px; white-space: nowrap;
+            -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+        }
+        .btn-save-row {
+            padding: 6px 10px; background: #e6fff2; border: 1.5px solid var(--success);
+            border-radius: 6px; font-family: 'Syne', sans-serif; font-size: 9px; font-weight: 700;
+            color: var(--success); cursor: pointer; transition: all 0.15s; letter-spacing: 1px; white-space: nowrap;
+            -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+        }
+        .edit-cell-input {
+            width: 100%; padding: 5px 6px; border: 1.5px solid var(--accent); border-radius: 6px;
+            font-family: 'DM Mono', monospace; font-size: 12px; text-align: center;
+            color: var(--navy); font-weight: 600; min-width: 60px;
+        }
+        .edit-cell-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(0,119,204,0.2); }
+
+        /* ===== CHARTS ===== */
+        .charts-grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 14px; }
+        @media (min-width: 768px) { .charts-grid { grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; } }
+        .chart-card {
+            background: white; border-radius: 12px; padding: 16px;
+            border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+        @media (min-width: 768px) { .chart-card { border-radius: 16px; padding: 22px; } }
+        .chart-title { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 12px; }
+
+        /* ===== PRINT ===== */
+        .print-header { display: none; }
+        .print-only-signatures { display: none; }
+        @media print {
+            @page { size: A4 landscape; margin: 8mm; }
+            .no-print, .row-checkbox, #selectAllHeader { display: none !important; }
+            .hide-row-print { display: none !important; }
+            #loginOverlay { display: none !important; }
+            #appHeader { display: none !important; }
+            .form-section, .search-wrap, .charts-grid { display: none !important; }
+            body { background: white !important; color: black !important; }
+            .page-wrap { padding: 0 !important; max-width: 100% !important; }
+            .print-header { display: block !important; text-align: center; margin-bottom: 16px; border-bottom: 2pt solid #00244d; padding-bottom: 10px; }
+            .print-header h1 { font-size: 18pt; font-family: 'Syne', sans-serif; color: #00244d; }
+            .print-header h2 { font-size: 12pt; color: #555; margin-top: 3px; }
+            .print-header p { font-size: 9pt; color: #777; }
+            .table-wrap { border: none !important; box-shadow: none !important; border-radius: 0 !important; }
+            .table-header-bar { display: none !important; }
+            table { width: 100% !important; border-collapse: collapse !important; }
+            thead tr { background: #00244d !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            thead th { font-size: 8pt !important; padding: 6px 5px !important; color: white !important; }
+            tbody td { font-size: 8.5pt !important; padding: 5px !important; border: 0.5pt solid #ccc !important; }
+            tfoot tr { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tfoot td { font-size: 9pt !important; padding: 6px !important; border: 1pt solid #999 !important; }
+            .print-only-signatures { display: flex !important; justify-content: space-around; margin-top: 40px; }
+            .sig-box { text-align: center; border-top: 1.5pt solid black; width: 38%; padding-top: 5px; font-family: 'Syne', sans-serif; font-weight: bold; font-size: 9pt; }
+            canvas { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginOverlay">
+    <div class="login-card">
+    <div class="login-logo-area">YNKN</div>
+    <div class="login-title">LABEL PRINTING SYSTEM</div>
+    <div class="login-sub">GLOBE INTERNATIONAL INDUSTRIES</div>
+    
+    <input type="text" id="usernameInput" placeholder="Username" class="login-input" style="margin-bottom:8px;">
+    <input type="password" id="passInput" placeholder="Password" class="login-input">
+    
+    <button onclick="checkPassword()" class="login-btn">ENTER SYSTEM</button>
+    <p id="loginError" class="login-error">⚠ Incorrect username or password.</p>
+</div>
+</div>
+
+<!-- MAIN -->
+<div id="mainContent">
+
+    <div class="print-header">
+        <h1>GLOBE INTERNATIONAL INDUSTRIES</h1>
+        <h2>LABEL PRINTING DEPARTMENT — PRODUCTION REPORT</h2>
+        <p>Report Date: <span id="currentDatePrint"></span></p>
+    </div>
+
+    <header id="appHeader" class="no-print">
+        <div class="header-row1">
+            <div class="header-brand">
+                <div class="header-logo">YNKN</div>
+                <div>
+                    <div class="header-title">LABEL PRINTING DEPT</div>
+                    <div class="header-sub">GLOBE INTERNATIONAL INDUSTRIES</div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button onclick="logout()" class="btn-logout">⊠ LOGOUT</button>
+            </div>
+        </div>
+        <div class="header-row2">
+            <div class="dt-row">
+                <span style="font-size:13px;opacity:0.7;">📅</span>
+                <span class="dt-date" id="liveDateOnly"></span>
+                <span class="dt-sep">|</span>
+                <span style="font-size:13px;opacity:0.7;">🕐</span>
+                <span class="dt-time" id="liveTimeOnly"></span>
+            </div>
+            <div id="syncBadge" class="syncing">
+                <span class="sync-dot"></span>
+                <span id="syncText">CONNECTING...</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="page-wrap">
+
+        <!-- FORM -->
+        <div class="form-section no-print">
+            <div class="section-label">Data Entry</div>
+            <div class="form-grid" id="inputForm">
+                <div class="form-field">
+                    <label class="field-label">Style No</label>
+                    <input type="text" id="styleNo" placeholder="e.g. ST-001" class="field-input" autocomplete="off">
+                </div>
+                <div class="form-field">
+                    <label class="field-label">ERP No</label>
+                    <input type="text" id="erpNo" placeholder="e.g. ERP-2024" class="field-input" autocomplete="off">
+                </div>
+                <div class="form-field">
+                    <label class="field-label">Line</label>
+                    <input type="text" id="line" placeholder="e.g. LINE-A" class="field-input" autocomplete="off">
+                </div>
+                <div class="form-field">
+                    <label class="field-label">Batch</label>
+                    <input type="text" id="batch" placeholder="e.g. B-001" class="field-input" autocomplete="off">
+                </div>
+                <div class="form-field">
+                    <label class="field-label">Cut No</label>
+                    <input type="number" id="cutNo" placeholder="0" class="field-input" inputmode="numeric">
+                </div>
+                <div class="form-field">
+                    <label class="field-label">Color</label>
+                    <input type="text" id="color" placeholder="e.g. Navy Blue" class="field-input" autocomplete="off">
+                </div>
+                <div class="form-field">
+                    <label class="field-label">Season</label>
+                    <input type="text" id="season" placeholder="e.g. SS25" class="field-input" autocomplete="off">
+                </div>
+                <div class="form-field">
+                    <label class="field-label">Total Qty</label>
+                    <input type="number" id="total" placeholder="0" class="field-input" inputmode="numeric">
+                </div>
+            </div>
+            <div class="action-bar">
+    <button onclick="addData()" class="btn btn-save">✓ SAVE</button>
+    <button onclick="resetForm()" class="btn btn-reset">↺ RESET</button>
+    <button onclick="exportToExcel()" class="btn btn-excel">⬇ EXCEL</button>
+    <button onclick="importExcel()" class="btn btn-excel" id="importBtn" style="display:none;">⬆ IMPORT EXCEL</button>
+    <button onclick="exportToPDF()" class="btn btn-pdf">⬇ PDF</button>
+    <button onclick="printSelectedReport()" class="btn btn-print">⎙ PRINT</button>
+    <button onclick="dailyClosure()" class="btn btn-closure">⊛ CLOSURE</button>
+    <button onclick="deleteSelectedRows()" class="btn btn-delete">✕ DELETE</button>
+</div>
+        </div>
+
+        <!-- SEARCH -->
+        <div class="search-wrap no-print">
+            <span class="search-icon">⌕</span>
+            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search by Style, ERP, Line, Color, Season..." class="search-input" autocomplete="off">
+        </div>
+
+        <!-- TABLE -->
+        <div class="table-wrap">
+            <div class="table-header-bar no-print">
+                <span class="table-title">PRODUCTION RECORDS</span>
+                <span class="record-count" id="recordCount">0 records</span>
+            </div>
+            <div class="overflow-x">
+                <table id="mainTable">
+                    <thead>
+                        <tr>
+                            <th class="no-print" id="selectAllHeader" style="width:36px;">
+                                <input type="checkbox" id="selectAllChk" class="row-checkbox" onchange="toggleSelectAll(this)">
+                            </th>
+                            <th>STYLE</th><th>ERP</th><th>LINE</th><th>BATCH</th>
+                            <th>CUT</th><th>COLOR</th><th>SEASON</th><th>TOTAL</th>
+                            <th class="no-print">EDIT</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="8" id="totalLabelCell" style="text-align:right;padding-right:16px;letter-spacing:2px;">GRAND TOTAL</td>
+                            <td id="grandTotal">0</td>
+                            <td class="no-print"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <div class="print-only-signatures">
+            <div class="sig-box"><p>RECEIVED BY</p></div>
+            <div class="sig-box"><p>AUTHORISED SIGNATORY</p></div>
+        </div>
+
+        <!-- CHARTS -->
+        <div class="charts-grid no-print">
+            <div class="chart-card">
+                <div class="chart-title">CUT NO PER LINE</div>
+                <canvas id="cutNoChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">TOTAL QUANTITY BY STYLE</div>
+                <canvas id="totalQtyChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+// =============================================
+//  JSONBin.io CONFIG
+// =============================================
+const JSONBIN_BIN_ID  = '6a255204da38895dfe946e80';
+const JSONBIN_MASTER  = '$2a$10$/I31YrSkp.7CETSdPJCJY.fEWcfXOV67tke8UEoDUhcsN1eSmO/pe';
+const JSONBIN_ACCESS  = null;   // No Access Key — Master Key only
+const JSONBIN_BASE    = 'https://api.jsonbin.io/v3/b';
+
+// =============================================
+//  APP STATE
+// =============================================
+// =============================================
+//  USERS & ROLES
+// =============================================
+const USERS = [
+    {
+        username: "admin",
+        password: "YNKN2026",
+        role: "admin",
+        name: "مدير النظام"
+    },
+    {
+        username: "entry",
+        password: "Entry2026",
+        role: "user",
+        name: "موظف الإدخال"
+    }
+];
+
+// Current logged in user
+let currentUser = null;
+let dataRecords   = [];
+let reportHistory = [];
+let cutNoChart, totalQtyChart;
+let syncInterval  = null;
+let lastVersion   = null;   // JSONBin version tracking (avoids unnecessary writes)
+let isSaving      = false;
+
+// =============================================
+//  JSONBIN HELPERS
+// =============================================
+function setSyncState(state, msg) {
+    const badge = document.getElementById('syncBadge');
+    const text  = document.getElementById('syncText');
+    if (!badge) return;
+    badge.className = 'syncing'; // reset
+    badge.classList.add(state);
+    text.innerText = msg;
+}
+
+async function binRead() {
+    const headers = { 'X-Master-Key': JSONBIN_MASTER };
+    if (JSONBIN_ACCESS) headers['X-Access-Key'] = JSONBIN_ACCESS;
+    const res = await fetch(`${JSONBIN_BASE}/${JSONBIN_BIN_ID}/latest`, { headers });
+    if (!res.ok) throw new Error(`Read failed: ${res.status}`);
+    const json = await res.json();
+    lastVersion = json.metadata?.version ?? null;
+    return json.record;
+}
+
+async function binWrite(payload) {
+    const headers = { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_MASTER };
+    if (JSONBIN_ACCESS) headers['X-Access-Key'] = JSONBIN_ACCESS;
+    const res = await fetch(`${JSONBIN_BASE}/${JSONBIN_BIN_ID}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(`Write failed: ${res.status}`);
+    const json = await res.json();
+    lastVersion = json.metadata?.version ?? null;
+    return json;
+}
+
+// =============================================
+//  DATA SYNC
+// =============================================
+async function fetchData() {
+    setSyncState('syncing', 'SYNCING...');
+    try {
+        const record = await binRead();
+        dataRecords   = (record.records  || []).filter(r => r.styleNo && r.styleNo !== 'N/A' && r.total > 0);
+        reportHistory = record.history   || [];
+        setSyncState('synced', 'LIVE ✓');
+        // Also cache locally as fallback
+        localStorage.setItem('gii_label_cache', JSON.stringify({ records: dataRecords, history: reportHistory }));
+    } catch(e) {
+        console.warn('JSONBin read failed, using local cache:', e.message);
+        setSyncState('error', 'OFFLINE');
+        const cache = JSON.parse(localStorage.getItem('gii_label_cache') || '{}');
+        dataRecords   = (cache.records  || []).filter(r => r.styleNo && r.styleNo !== 'N/A' && r.total > 0);
+        reportHistory = cache.history   || [];
+    }
+}
+
+async function pushData() {
+    if (isSaving) return;
+    isSaving = true;
+    setSyncState('syncing', 'SAVING...');
+    const payload = { records: dataRecords, history: reportHistory };
+    // Always update local cache immediately
+    localStorage.setItem('gii_label_cache', JSON.stringify(payload));
+    try {
+        await binWrite(payload);
+        setSyncState('synced', 'SAVED ✓');
+    } catch(e) {
+        console.warn('JSONBin write failed:', e.message);
+        setSyncState('error', 'SAVE FAILED');
+    } finally {
+        isSaving = false;
+    }
+}
+
+// Auto-sync: poll every 4 seconds, only re-render if data changed
+async function autoSync() {
+    if (isSaving) return; // don't conflict with a live save
+    try {
+        const record = await binRead();
+        const incoming = (record.records || []).filter(r => r.styleNo && r.styleNo !== 'N/A' && r.total > 0);
+        // Compare lengths + last id as a cheap diff check
+        const myKey  = dataRecords.map(r=>r.id).join(',');
+        const newKey = incoming.map(r=>r.id).join(',');
+        if (myKey !== newKey) {
+            dataRecords   = incoming;
+            reportHistory = record.history || [];
+            renderTable();
+            updateCharts();
+            localStorage.setItem('gii_label_cache', JSON.stringify({ records: dataRecords, history: reportHistory }));
+        }
+        setSyncState('synced', 'LIVE ✓');
+    } catch(e) {
+        setSyncState('error', 'OFFLINE');
+    }
+}
+
+// =============================================
+//  AUTH
+// =============================================
+function checkPassword() {
+    const username = document.getElementById('usernameInput').value.trim();
+    const password = document.getElementById('passInput').value.trim();
+
+    const user = USERS.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
+
+    if (user) {
+        currentUser = user;
+        sessionStorage.setItem('gii_auth', 'true');
+        sessionStorage.setItem('gii_user', JSON.stringify(user));
+        showSystem();
+    } else {
+        document.getElementById('loginError').style.display = 'block';
+        document.getElementById('passInput').value = '';
+    }
+}
+
+
+async function showSystem() {
+    const savedUser = sessionStorage.getItem('gii_user');
+    if (savedUser) currentUser = JSON.parse(savedUser);
+
+    await fetchData();
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+
+    // إظهار اسم المستخدم في الهيدر (اختياري)
+    updateUserDisplay();
+
+    document.getElementById('currentDatePrint').innerText = new Date().toLocaleDateString('en-GB');
+    updateLiveDate();
+    setInterval(updateLiveDate, 1000);
+
+    renderTable();
+    initCharts();
+    applyUserPermissions();     // ← مهم جدًا
+    syncInterval = setInterval(autoSync, 4000);
+
+    applyUserPermissions();   // ← مهم جدًا
+}
+function updateUserDisplay() {
+    // يمكنك إضافته في الهيدر لاحقًا
+    console.log(`Logged in as: ${currentUser.name} (${currentUser.role})`);
+}
+
+// =============================================
+//  USER PERMISSIONS
+// =============================================
+// =============================================
+//  USER PERMISSIONS (محدثة)
+// =============================================
+function applyUserPermissions() {
+    if (!currentUser) return;
+
+    const isAdmin = currentUser.role === 'admin';
+
+    document.querySelectorAll('.btn-delete, .btn-closure').forEach(btn => {
+        btn.style.display = isAdmin ? '' : 'none';
+    });
+
+    // Import Button
+    const importBtn = document.getElementById('importBtn');
+    if (importBtn) importBtn.style.display = isAdmin ? '' : 'none';
+
+    if (!isAdmin) {
+        document.querySelectorAll('.btn-edit-row, .btn-save-row').forEach(btn => {
+            btn.style.display = 'none';
+        });
+        const editColumn = document.querySelectorAll('#mainTable thead tr th:last-child');
+        if (editColumn.length > 0) editColumn[0].style.display = 'none';
+    } else {
+        document.querySelectorAll('.btn-edit-row, .btn-save-row').forEach(btn => {
+            btn.style.display = '';
+        });
+        const editColumn = document.querySelectorAll('#mainTable thead tr th:last-child');
+        if (editColumn.length > 0) editColumn[0].style.display = '';
+    }
+}
+    
+
+function logout() {
+    sessionStorage.removeItem('gii_auth');
+    if (syncInterval) clearInterval(syncInterval);
+    location.reload();
+}
+
+function updateLiveDate() {
+    const now = new Date();
+    const d = document.getElementById('liveDateOnly');
+    const t = document.getElementById('liveTimeOnly');
+    if (d) d.innerText = now.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+    if (t) t.innerText = now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true });
+}
+
+// =============================================
+//  DATA CRUD
+// =============================================
+async function addData() {
+    const styleNo  = document.getElementById('styleNo').value.trim();
+    const totalVal = Number(document.getElementById('total').value);
+    if (!styleNo || !totalVal) { 
+        alert('Please fill in Style No and Total Qty.'); 
+        return; 
+    }
+
+    dataRecords.push({
+        id:     Date.now(),
+        styleNo,
+        erpNo:  document.getElementById('erpNo').value.trim()  || 'N/A',
+        line:   document.getElementById('line').value.trim()   || 'N/A',
+        batch:  document.getElementById('batch').value.trim()  || 'N/A',
+        cutNo:  Number(document.getElementById('cutNo').value) || 0,
+        color:  document.getElementById('color').value.trim()  || 'N/A',
+        season: document.getElementById('season').value.trim() || 'N/A',
+        total:  totalVal
+    });
+
+    resetForm();
+    renderTable();
+    updateCharts();
+    applyUserPermissions();     // ← مهم
+    await pushData();
+    document.getElementById('styleNo').focus();
+}
+
+function resetForm() {
+    document.querySelectorAll('#inputForm input').forEach(i => i.value = '');
+}
+
+// =============================================
+//  TABLE RENDER
+// =============================================
+function renderTable() {
+    const tbody = document.getElementById('tableBody');
+    let totalSum = 0;
+
+    tbody.innerHTML = dataRecords.map(r => {
+        totalSum += r.total;
+        return `
+        <tr id="row-${r.id}">
+            <td class="no-print"><input type="checkbox" class="row-checkbox" data-total="${r.total}"></td>
+            <td class="td-style  cell-styleNo">${r.styleNo}</td>
+            <td class="cell-erpNo">${r.erpNo}</td>
+            <td class="td-line   cell-line">${r.line}</td>
+            <td class="cell-batch">${r.batch}</td>
+            <td class="td-cut    cell-cutNo">${r.cutNo}</td>
+            <td class="cell-color">${r.color}</td>
+            <td class="td-season cell-season">${r.season}</td>
+            <td class="td-total  cell-total">${r.total}</td>
+            <td class="no-print">
+                <button onclick="toggleEdit(${r.id})" id="btn-edit-${r.id}" class="btn-edit-row">EDIT</button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('grandTotal').innerText  = totalSum;
+    document.getElementById('recordCount').innerText = dataRecords.length + ' record' + (dataRecords.length !== 1 ? 's' : '');
+
+    // ←←←←← إضافة مهمة جداً
+    applyUserPermissions();
+}
+
+// =============================================
+//  SAVE DATA
+// =============================================
+async function saveData() {
+    renderTable();
+    updateCharts();
+    applyUserPermissions();     // مهم جداً عشان يخفي زرار EDIT
+    await pushData();
+}
+// =============================================
+//  INLINE EDIT
+// =============================================
+function toggleEdit(id) {
+    const row    = document.getElementById(`row-${id}`);
+    const btn    = document.getElementById(`btn-edit-${id}`);
+    const editing = btn.classList.contains('btn-save-row');
+    const fields  = ['styleNo','erpNo','line','batch','cutNo','color','season','total'];
+
+    if (!editing) {
+        fields.forEach(f => {
+            const cell = row.querySelector(`.cell-${f}`);
+            const val  = cell.innerText;
+            const type = (f==='total'||f==='cutNo') ? 'number' : 'text';
+            cell.innerHTML = `<input type="${type}" class="edit-cell-input" value="${val}" inputmode="${(f==='total'||f==='cutNo')?'numeric':'text'}">`;
+        });
+        btn.textContent = 'SAVE';
+        btn.classList.replace('btn-edit-row', 'btn-save-row');
+    } else {
+        const updated = { id };
+        fields.forEach(f => {
+            const input = row.querySelector(`.cell-${f} input`);
+            let val = input.value;
+            if (f==='total'||f==='cutNo') val = Number(val);
+            updated[f] = val;
+        });
+        const idx = dataRecords.findIndex(r => r.id === id);
+        if (idx !== -1) { dataRecords[idx] = updated; saveData(); }
+    }
+}
+
+// =============================================
+//  DELETE
+// =============================================
+async function deleteSelectedRows() {
+    const checked = document.querySelectorAll('.row-checkbox:checked');
+    if (!checked.length) { alert('Please select rows to delete.'); return; }
+    if (!confirm(`Delete ${checked.length} selected row(s)?`)) return;
+    const ids = Array.from(checked).map(cb => parseInt(cb.closest('tr').id.replace('row-','')));
+    dataRecords = dataRecords.filter(r => !ids.includes(r.id));
+    await saveData();
+}
+
+// =============================================
+//  FILTER
+// =============================================
+function filterTable() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    let filteredTotal = 0, visCount = 0;
+    document.querySelectorAll('#tableBody tr').forEach(row => {
+        const show = row.innerText.toLowerCase().includes(q);
+        row.style.display = show ? '' : 'none';
+        if (show) {
+            filteredTotal += Number(row.querySelector('.row-checkbox').getAttribute('data-total'));
+            visCount++;
+        }
+    });
+    document.getElementById('grandTotal').innerText  = filteredTotal;
+    document.getElementById('recordCount').innerText = visCount + ' record' + (visCount!==1?'s':'');
+}
+
+function toggleSelectAll(src) {
+    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = src.checked);
+}
+
+// =============================================
+//  PRINT
+// =============================================
+function printSelectedReport() {
+    const rows = document.querySelectorAll('#tableBody tr');
+    let selTotal = 0, any = false;
+    const totalDisplay = document.getElementById('grandTotal');
+    const totalLabel   = document.getElementById('totalLabelCell');
+    const origTotal    = totalDisplay.innerText;
+    rows.forEach(row => {
+        const cb = row.querySelector('.row-checkbox');
+        if (!cb.checked) row.classList.add('hide-row-print');
+        else { row.classList.remove('hide-row-print'); selTotal += Number(cb.getAttribute('data-total')); any = true; }
+    });
+    if (!any) { alert('Please select rows to print.'); rows.forEach(r=>r.classList.remove('hide-row-print')); return; }
+    totalDisplay.innerText = selTotal;
+    totalLabel.setAttribute('colspan','7');
+    window.print();
+    rows.forEach(r=>r.classList.remove('hide-row-print'));
+    totalDisplay.innerText = origTotal;
+    totalLabel.setAttribute('colspan','8');
+}
+
+// =============================================
+//  EXCEL EXPORT
+// =============================================
+// Icons (base64 PNGs) for the Label Format sheet
+const ICON_ARROW_B64   = "iVBORw0KGgoAAAANSUhEUgAAAFwAAABMCAYAAADgOdDDAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAASmSURBVHhe7ZwhUOQwFIbDGXCsW+RKHEgci0OCQ+IAh8QhkSgGiQQHDhygkODAgQNmmAEHil7+XML0drJtmiavrzTfzJu2C7NJv75NkzbtRCYRCTL+6GWCiCScmCScGNZt+MPDg3h5eVHrd3d34uPjQ61fX1+L2dlZ0e/31fb8/Lzo9XpqfTgcqiVX2Ah/enoSV1dXSiaW2PZlampKiV9cXFTLhYUF/ZfmaUw4Mvfi4iKI4DJYHQAIp+T+/j5bX1/PpAQc6EZCNkfZ0dFR9vn5qWtFB5nw8/PzbHl52SqgqZiZmcl2d3ez5+dnXcv4RBeOTEJG2XaYS+DXhl/d4+OjrnU8oglH0yHbSusOcg2I39vb03sQhyjC9/f3s8nJSetOtSGQKLGamaDCUUlu7bRvTE9Pq+YwNMGEHx8fq0raKt/mQAK9v7/rvaxPEOHIBFtlf0vIkWww6bWF/3bZJkJJryWck+zBYGD9PGSEkO4tnFtmow/dBulewjFqtFWmyQBU0tFt9KWycBxdDIltFWkyDFTSfQdIlYVjCGyrQNORh0I6RqUYTVelknD0tW2Fc4hRKKSjPa96xdFZOEaR/X7fWjCHsEEhHVcbq+AsfG1tzVoglxhHbOloWm5vb3Vp5TgJR3bbCuMURcSWvr29rUsqx0k4zsi2gjhFGTGlo9fm2pY73dM8ODgQb29veosnsi3Va+PBfdOlpaUo909PT0/FysqK3ipAae8QsTJdytYlFNPJuYUxMl2ePIU8mEI2L/oTO52ceSUzXFxeXqplKL6+vsTZ2ZneGk9np7rFkI45NmV0em5haOmYmldGJ9vwUUK16WjHZfdQb9lJs2cloTId7XjZQUvCNaGbl3Ek4TlCSE8ZXhHIdhm1+pKEa0zfAVOot7a21LoPaeDjAGRPTEwo2aurq+rk5wt6KkV0vlsYSja+A9+FbmGR9E5neMjMxnfhuaOyDO+s8JCyDRBeRieFx5AN5ubm9FoBsvBO8f39rZaYzCR//upadt2QB08tXaZNdEp4DNkmXGdjdaZJkfsapRkxbGxs6LUS/nkvBnMv8K+co4iYmY3Ad7reRHYSjvuAtoI4xThiy0Zg+p8rTsIBbpLaCuMSNmLLNifL4BOBALI8VoaEiFEoMhuxubmpynHFWTg4PDxUhZgjyynyUMkeDAbxJnMauD4WaKCSjbi5uVFlVaGycMwz5Ph4YB4K2Ts7O7q0alQWDjg+uWagkI13B1RtSgxewgG3vjmgkI12Gx0IX7yFA07S2yAb1BIOuEhvg2xQWzhow9C/ToSSDYIIB22YtO8TOEGGkg2CCQfol3J/+0+VQNfPtzcyjqDCASqIitp2oC2BpPEZ1LgQXLihrdkeI6vzRBMOUHGcUHu9nnXnOMVwOIyW1XmiCjdAPC584Wxv29mmAl1JXMuucnm1LiTC82CA0vQFsCbeV2hobOYVnhY4OTn5eRVqbOT55Od1qHi8T2a3/gstbKa6QXr+Zb91yQvGsmySJRVs5xYa6XiFNV5lDV5fX/97jgavsDaTbyAUkgGWXASPkp7xISZNVyYmCScmCScmCScmCScmCScmCSdFiL/jjoU2HrEgRAAAAABJRU5ErkJggg==";
+const ICON_EDIT_B64    = "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";
+const ICON_FACTORY_B64 = "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";
+
+async function exportToExcel() {
+    // ── Sheet 1 data with SheetJS for the simple data sheet ──────────────────
+    const data = dataRecords.map(r => ({
+        "STYLE NO": r.styleNo, "ERP NO": r.erpNo, "LINE": r.line, "BATCH": r.batch,
+        "CUT NO": r.cutNo, "COLOR": r.color, "SEASON": r.season, "TOTAL": r.total
+    }));
+    data.push({ "STYLE NO":"GRAND TOTAL","ERP NO":"","LINE":"","BATCH":"","CUT NO":"","COLOR":"","SEASON":"","TOTAL": dataRecords.reduce((s,r)=>s+r.total,0) });
+
+    // ── Selected rows ─────────────────────────────────────────────────────────
+    const selectedSamples = [];
+    const rows = document.querySelectorAll('#tableBody tr');
+    for (const row of rows) {
+        const cb = row.querySelector('.row-checkbox');
+        if (cb && cb.checked) {
+            const cells = row.querySelectorAll('td');
+            selectedSamples.push({
+                styleNo: cells[1]?.innerText||'', erpNo: cells[2]?.innerText||'',
+                line:    cells[3]?.innerText||'',  batch: cells[4]?.innerText||'',
+                cutNo:   cells[5]?.innerText||'',  color: cells[6]?.innerText||'',
+                season:  cells[7]?.innerText||'',  total: cells[8]?.innerText||''
+            });
+        }
+    }
+    if (!selectedSamples.length && dataRecords.length) selectedSamples.push(dataRecords[0]);
+    if (!selectedSamples.length) selectedSamples.push({ styleNo:'', erpNo:'', line:'', batch:'', cutNo:'', color:'', season:'', total:'' });
+
+    const now = new Date();
+    const seasonYear = now.getFullYear();
+    const seasonMonth = now.getMonth() + 1;
+
+    // ── Build with ExcelJS (supports embedded images) ────────────────────────
+    const wb = new ExcelJS.Workbook();
+
+    // Sheet 1: Labels Report
+    const ws1 = wb.addWorksheet("Labels Report");
+    ws1.columns = [
+        { header:"STYLE NO", key:"styleNo", width:14 },
+        { header:"ERP NO",   key:"erpNo",   width:12 },
+        { header:"LINE",     key:"line",    width:8 },
+        { header:"BATCH",    key:"batch",   width:10 },
+        { header:"CUT NO",   key:"cutNo",   width:10 },
+        { header:"COLOR",    key:"color",   width:16 },
+        { header:"SEASON",   key:"season",  width:10 },
+        { header:"TOTAL",    key:"total",   width:10 }
+    ];
+    data.forEach(d => ws1.addRow({
+        styleNo:d["STYLE NO"], erpNo:d["ERP NO"], line:d["LINE"], batch:d["BATCH"],
+        cutNo:d["CUT NO"], color:d["COLOR"], season:d["SEASON"], total:d["TOTAL"]
+    }));
+    ws1.getRow(1).font = { bold:true };
+
+    // Sheet 2: Label Format
+    const ws2 = wb.addWorksheet("Label Format");
+    ws2.columns = [
+        { width: 13 },
+        { width: 12.33 },
+        { width: 3.11 },
+        { width: 11 }
+    ];
+
+    // Register images once
+    const imgFactory = wb.addImage({ base64: ICON_FACTORY_B64, extension: 'png' });
+    const imgEdit    = wb.addImage({ base64: ICON_EDIT_B64,    extension: 'png' });
+    const imgArrow   = wb.addImage({ base64: ICON_ARROW_B64,   extension: 'png' });
+
+    const BLOCK = 10, SPACER = 2;
+    const thickBottom = { bottom: { style:'thick', color:{argb:'FF000000'} } };
+
+    const centerAlign = { horizontal:'center', vertical:'middle' };
+    const rightAlign  = { horizontal:'right',  vertical:'middle' };
+    const leftAlign   = { horizontal:'left',   vertical:'middle' };
+    const topCenter   = { horizontal:'center', vertical:'top' };
+
+    const fontBig    = { name:'Calibri', size:28, bold:true };
+    const fontHuge   = { name:'Calibri', size:48, bold:true };
+    const fontMed    = { name:'Calibri', size:20, bold:true };
+
+    selectedSamples.forEach((sample, idx) => {
+        const baseRow = idx * (BLOCK + SPACER);
+        // Excel rows are 1-indexed
+        const R = (offset) => baseRow + offset + 1;
+
+        // Row 1: spacing (blank)
+        // Row 2: LOT# {batch}
+        ws2.getCell(`A${R(1)}`).value = 'LOT# ' + (sample.batch||'0000');
+        ws2.mergeCells(`A${R(1)}:D${R(1)}`);
+        ws2.getCell(`A${R(1)}`).font = fontBig;
+        ws2.getCell(`A${R(1)}`).alignment = centerAlign;
+
+        // Row 3: ERP NO:{erpNo}
+        ws2.getCell(`A${R(2)}`).value = 'ERP NO:' + (sample.erpNo||'0000');
+        ws2.mergeCells(`A${R(2)}:D${R(2)}`);
+        ws2.getCell(`A${R(2)}`).font = fontBig;
+        ws2.getCell(`A${R(2)}`).alignment = centerAlign;
+
+        // Row 4: factory icon (A) + year / month
+        ws2.getCell(`B${R(3)}`).value = seasonYear;
+        ws2.getCell(`B${R(3)}`).font = fontBig;
+        ws2.getCell(`B${R(3)}`).alignment = rightAlign;
+        ws2.getCell(`C${R(3)}`).value = '/';
+        ws2.getCell(`C${R(3)}`).font = fontBig;
+        ws2.getCell(`C${R(3)}`).alignment = centerAlign;
+        ws2.getCell(`D${R(3)}`).value = seasonMonth;
+        ws2.getCell(`D${R(3)}`).font = fontBig;
+        ws2.getCell(`D${R(3)}`).alignment = leftAlign;
+
+        // Row 5: edit icon (A) + total / cutNo
+        ws2.getCell(`B${R(4)}`).value = Number(sample.total)||0;
+        ws2.getCell(`B${R(4)}`).font = fontBig;
+        ws2.getCell(`B${R(4)}`).alignment = rightAlign;
+        ws2.getCell(`C${R(4)}`).value = '/';
+        ws2.getCell(`C${R(4)}`).font = fontBig;
+        ws2.getCell(`C${R(4)}`).alignment = centerAlign;
+        ws2.getCell(`D${R(4)}`).value = Number(sample.cutNo)||0;
+        ws2.getCell(`D${R(4)}`).font = fontBig;
+        ws2.getCell(`D${R(4)}`).alignment = leftAlign;
+
+        // Row 6: arrow icon (A) + big total (B:D, 48pt)
+        ws2.getCell(`B${R(5)}`).value = Number(sample.total)||0;
+        ws2.mergeCells(`B${R(5)}:D${R(5)}`);
+        ws2.getCell(`B${R(5)}`).font = fontHuge;
+        ws2.getCell(`B${R(5)}`).alignment = leftAlign;
+
+        // Row 7: Line#
+        ws2.getCell(`B${R(6)}`).value = 'Line#:';
+        ws2.mergeCells(`B${R(6)}:C${R(6)}`);
+        ws2.getCell(`B${R(6)}`).font = fontBig;
+        ws2.getCell(`B${R(6)}`).alignment = centerAlign;
+        ws2.getCell(`D${R(6)}`).value = Number(sample.line)||0;
+        ws2.getCell(`D${R(6)}`).font = fontBig;
+        ws2.getCell(`D${R(6)}`).alignment = leftAlign;
+
+        // Row 8: style-color
+        ws2.getCell(`A${R(7)}`).value = (sample.styleNo||'') + '-' + (sample.color||'');
+        ws2.mergeCells(`A${R(7)}:D${R(7)}`);
+        ws2.getCell(`A${R(7)}`).font = fontBig;
+        ws2.getCell(`A${R(7)}`).alignment = centerAlign;
+
+        // Row 9: Cut#
+        ws2.getCell(`B${R(8)}`).value = 'Cut#:';
+        ws2.mergeCells(`B${R(8)}:C${R(8)}`);
+        ws2.getCell(`B${R(8)}`).font = fontBig;
+        ws2.getCell(`B${R(8)}`).alignment = centerAlign;
+        ws2.getCell(`D${R(8)}`).value = Number(sample.cutNo)||0;
+        ws2.getCell(`D${R(8)}`).font = fontBig;
+        ws2.getCell(`D${R(8)}`).alignment = leftAlign;
+
+        // Row 10: MADE IN EGYPT with thick bottom border
+        ws2.getCell(`A${R(9)}`).value = 'MADE IN EGYPT';
+        ws2.mergeCells(`A${R(9)}:D${R(9)}`);
+        ws2.getCell(`A${R(9)}`).font = fontMed;
+        ws2.getCell(`A${R(9)}`).alignment = topCenter;
+        ['A','B','C','D'].forEach(col => {
+            ws2.getCell(`${col}${R(9)}`).border = thickBottom;
+        });
+
+        // Row heights
+        for (let i = 1; i <= 8; i++) ws2.getRow(R(i)).height = 43.2;
+        ws2.getRow(R(9)).height = 36.6;
+        for (let i = 0; i < SPACER; i++) ws2.getRow(baseRow + BLOCK + i + 1).height = 12;
+
+        // Place icons in column A at rows 4, 5, 6 (0-indexed col 0)
+        // ExcelJS tl uses 0-indexed col/row with fractional offsets
+        ws2.addImage(imgFactory, {
+            tl: { col: 0.15, row: baseRow + 3 + 0.05 },
+            ext: { width: 55, height: 50 }
+        });
+        ws2.addImage(imgEdit, {
+            tl: { col: 0.20, row: baseRow + 4 + 0.05 },
+            ext: { width: 55, height: 50 }
+        });
+        ws2.addImage(imgArrow, {
+            tl: { col: 0.15, row: baseRow + 5 + 0.10 },
+            ext: { width: 70, height: 55 }
+        });
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Label_Report_${new Date().toLocaleDateString('en-GB').replace(/\//g,'-')}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// =============================================
+//  PDF EXPORT
+// =============================================
+function exportToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l','mm','a4');
+    const now  = new Date();
+    const rDate = now.toLocaleDateString('en-GB');
+    const rTime = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});
+    doc.setFillColor(0,36,77); doc.rect(0,0,297,35,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(18); doc.setFont(undefined,'bold');
+    doc.text("GLOBE INTERNATIONAL INDUSTRIES",14,14);
+    doc.setFontSize(10); doc.setFont(undefined,'normal');
+    doc.text("LABEL PRINTING DEPARTMENT — PRODUCTION REPORT",14,21);
+    doc.setFontSize(9); doc.setTextColor(200,210,230);
+    doc.text(`DATE: ${rDate}   TIME: ${rTime}`,14,28);
+
+    const rows = document.querySelectorAll('#tableBody tr');
+    let selData = [], selTotal = 0;
+    rows.forEach(row => {
+        const cb = row.querySelector('.row-checkbox');
+        if (cb && cb.checked) {
+            const cells = row.querySelectorAll('td');
+            selData.push([cells[1].innerText,cells[2].innerText,cells[3].innerText,cells[4].innerText,cells[5].innerText,cells[6].innerText,cells[7].innerText,cells[8].innerText]);
+            selTotal += Number(cells[8].innerText);
+        }
+    });
+    if (!selData.length) { alert('Please select rows first.'); return; }
+    selData.push([
+        {content:'GRAND TOTAL',colSpan:7,styles:{halign:'right',fontStyle:'bold',fillColor:[238,242,251]}},
+        {content:String(selTotal),styles:{halign:'center',fontStyle:'bold',fillColor:[238,242,251]}}
+    ]);
+    const rCount = selData.length;
+    const fs = rCount>40?Math.max(5,10-rCount/12):rCount>25?7.5:rCount>15?9:10;
+    const cp = rCount>40?0.8:rCount>25?1.2:rCount>15?2:3;
+    doc.autoTable({
+        head:[['STYLE NO','ERP NO','LINE','BATCH','CUT NO','COLOR','SEASON','TOTAL']],
+        body:selData, startY:38, theme:'grid',
+        styles:{fontSize:fs,halign:'center',cellPadding:cp,valign:'middle'},
+        headStyles:{fillColor:[0,36,77],textColor:[255,255,255],fontSize:Math.max(fs,8)},
+        margin:{bottom:30}
+    });
+    const ph = doc.internal.pageSize.height;
+    doc.setTextColor(0); doc.setFontSize(8); doc.setFont(undefined,'normal');
+    doc.setDrawColor(80); doc.setLineWidth(0.4);
+    doc.line(25,ph-20,90,ph-20);  doc.text("RECEIVED BY",45,ph-14,{align:'center'});
+    doc.line(210,ph-20,275,ph-20); doc.text("AUTHORISED SIGNATORY",242,ph-14,{align:'center'});
+    doc.save(`Selected_Report_${rDate.replace(/\//g,'-')}.pdf`);
+}
+
+// =============================================
+//  DAILY CLOSURE
+// =============================================
+async function dailyClosure() {
+    if (!dataRecords.length) { alert('No data to archive.'); return; }
+    if (!confirm("Close today's report? Data will be archived and the table cleared.")) return;
+    const totalQty = dataRecords.reduce((s,r)=>s+r.total,0);
+    const date     = new Date().toLocaleDateString('en-GB');
+    reportHistory.push({ date, totalItems:dataRecords.length, grandTotalQty:totalQty, details:[...dataRecords] });
+    exportToPDF();
+    dataRecords = [];
+    await saveData();
+    alert(`Report for ${date} archived successfully.`);
+}
+
+// =============================================
+//  IMPORT EXCEL (Admin Only)
+// =============================================
+function importExcel() {
+    if (currentUser?.role !== 'admin') {
+        alert("هذه الميزة متاحة للمدير فقط");
+        return;
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx, .xls';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async function(ev) {
+            try {
+                const data = new Uint8Array(ev.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                let importedCount = 0;
+
+                jsonData.forEach(row => {
+                    const styleNo = (row["STYLE NO"] || row["Style No"] || row["STYLE"] || "").toString().trim();
+                    if (!styleNo) return;
+
+                    const record = {
+                        id: Date.now() + importedCount,
+                        styleNo: styleNo,
+                        erpNo: (row["ERP NO"] || row["ERP"] || "N/A").toString().trim(),
+                        line: (row["LINE"] || row["Line"] || "N/A").toString().trim(),
+                        batch: (row["BATCH"] || row["Batch"] || "N/A").toString().trim(),
+                        cutNo: parseInt(row["CUT NO"] || row["CUT"] || row["Cut No"] || 0),
+                        color: (row["COLOR"] || row["Color"] || "N/A").toString().trim(),
+                        season: (row["SEASON"] || row["Season"] || "N/A").toString().trim(),
+                        total: parseInt(row["TOTAL"] || row["Total Qty"] || row["TOTAL QTY"] || 0)
+                    };
+
+                    if (record.total > 0) {
+                        dataRecords.push(record);
+                        importedCount++;
+                    }
+                });
+
+                if (importedCount > 0) {
+                    renderTable();
+                    updateCharts();
+                    applyUserPermissions();
+                    await pushData();
+                    alert(`✅ تم استيراد ${importedCount} سجل بنجاح!`);
+                } else {
+                    alert("⚠ لم يتم العثور على بيانات صالحة في الملف");
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert("❌ حدث خطأ أثناء قراءة الملف");
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    };
+    input.click();
+}
+
+// =============================================
+//  CHARTS
+// =============================================
+function initCharts() {
+    const c1 = document.getElementById('cutNoChart').getContext('2d');
+    const c2 = document.getElementById('totalQtyChart').getContext('2d');
+    cutNoChart = new Chart(c1, {
+        type:'bar',
+        data:{labels:[],datasets:[{label:'Cut No',data:[],backgroundColor:'rgba(0,65,122,0.85)',borderRadius:5}]},
+        options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+    });
+    totalQtyChart = new Chart(c2, {
+        type:'line',
+        data:{labels:[],datasets:[{label:'Total Qty',data:[],borderColor:'#d92b3a',backgroundColor:'rgba(217,43,58,0.08)',fill:true,tension:0.4,pointBackgroundColor:'#d92b3a'}]},
+        options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+    });
+    updateCharts();
+}
+
+function updateCharts() {
+    if (!cutNoChart) return;
+    cutNoChart.data.labels             = dataRecords.map(r=>r.line);
+    cutNoChart.data.datasets[0].data   = dataRecords.map(r=>r.cutNo);
+    cutNoChart.update();
+    totalQtyChart.data.labels           = dataRecords.map(r=>r.styleNo);
+    totalQtyChart.data.datasets[0].data = dataRecords.map(r=>r.total);
+    totalQtyChart.update();
+}
+
+// =============================================
+//  INIT
+// =============================================
+window.onload = async () => {
+    if (sessionStorage.getItem('gii_auth') === 'true') await showSystem();
+};
+document.getElementById('passInput').addEventListener('keypress', e => { if(e.key==='Enter') checkPassword(); });
+document.getElementById('inputForm').addEventListener('keypress', e => { if(e.key==='Enter') addData(); });
+</script>
+</body>
+</html>
